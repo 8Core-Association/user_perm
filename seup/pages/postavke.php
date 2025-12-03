@@ -535,9 +535,9 @@ print '<button type="button" class="seup-modal-close">&times;</button>';
 print '</div>';
 print '<div class="seup-modal-body">';
 print '<form method="post" action="'.$_SERVER['PHP_SELF'].'" class="seup-form">';
-print '<div class="seup-form-grid"><div class="seup-form-group"><label class="seup-label">Korisnik</label><select name="ime_user" id="ime_user" class="seup-select" required><option value="">Odaberite korisnika</option>';
-foreach ($listUsers as $u) { print '<option value="'.htmlspecialchars($u->getFullName($langs)).'">'.htmlspecialchars($u->getFullName($langs)).'</option>'; }
-print '</select></div><div class="seup-form-group"><label class="seup-label">Redni broj (0-99)</label><input type="number" name="redni_broj" id="redni_broj" class="seup-input" min="0" max="99" required></div></div>';
+print '<div class="seup-form-grid"><div class="seup-form-group"><label class="seup-label">Korisnik</label><input type="text" name="ime_user" id="ime_user" class="seup-input" list="user-list" placeholder="Unesite ili odaberite korisnika" required autocomplete="off"><datalist id="user-list">';
+foreach ($listUsers as $u) { print '<option value="'.htmlspecialchars($u->getFullName($langs)).'">"; }
+print '</datalist></div><div class="seup-form-group"><label class="seup-label">Redni broj (0-99)</label><input type="number" name="redni_broj" id="redni_broj" class="seup-input" min="0" max="99" required></div></div>';
 print '<div class="seup-form-group"><label class="seup-label">Radno mjesto</label><input type="text" name="radno_mjesto_korisnika" id="radno_mjesto_korisnika" class="seup-input" required></div>';
 print '<div class="seup-form-actions"><button type="submit" name="action_oznaka" value="add" class="seup-btn seup-btn-primary"><i class="fas fa-plus"></i> Dodaj</button><button type="submit" name="action_oznaka" value="update" class="seup-btn seup-btn-secondary"><i class="fas fa-edit"></i> Ažuriraj</button><button type="submit" name="action_oznaka" value="delete" class="seup-btn seup-btn-danger"><i class="fas fa-trash"></i> Obriši</button></div>';
 print '</form>';
@@ -731,13 +731,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Interne oznake korisnika - load existing data
-  const userSelect = document.getElementById('ime_user');
+  const userInput = document.getElementById('ime_user');
   const redniBrojInput = document.getElementById('redni_broj');
   const radnoMjestoInput = document.getElementById('radno_mjesto_korisnika');
 
-  if (userSelect && redniBrojInput && radnoMjestoInput) {
-    userSelect.addEventListener('change', async function() {
-      const selectedUser = this.value;
+  if (userInput && redniBrojInput && radnoMjestoInput) {
+    // Trigger on blur (when user leaves the field)
+    userInput.addEventListener('blur', async function() {
+      const selectedUser = this.value.trim();
 
       if (!selectedUser) {
         redniBrojInput.value = '';
@@ -780,6 +781,42 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Greška pri dohvaćanju podataka:', error);
         showMessage('Greška pri učitavanju podataka', 'error');
       }
+    });
+
+    // Also trigger on datalist selection (input event)
+    userInput.addEventListener('input', function() {
+      // Debounce to avoid too many requests
+      clearTimeout(userInput.loadTimeout);
+      userInput.loadTimeout = setTimeout(async () => {
+        const selectedUser = userInput.value.trim();
+        if (!selectedUser) return;
+
+        try {
+          const formData = new FormData();
+          formData.append('action_oznaka', 'get_user_data');
+          formData.append('ime_user', selectedUser);
+
+          const response = await fetch('<?php echo $_SERVER["PHP_SELF"]; ?>', {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              redniBrojInput.value = result.data.redni_broj;
+              radnoMjestoInput.value = result.data.radno_mjesto;
+              showMessage('Podaci učitani', 'success', 2000);
+            }
+          }
+        } catch (error) {
+          // Silent fail on input event
+        }
+      }, 500);
     });
   }
 
