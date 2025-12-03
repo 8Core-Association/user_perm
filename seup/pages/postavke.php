@@ -927,14 +927,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(()=>{ el.classList.remove('show'); }, duration);
   };
 
-  // Auto-open modal za edit interne oznake
-  <?php if ($edit_oznaka > 0): ?>
-  const interneOznakeModal = document.getElementById('interneOznakeModal');
-  if (interneOznakeModal) {
-    interneOznakeModal.classList.add('show');
-  }
-  <?php endif; ?>
-
   // Reset forma za interne oznake
   const btnPonistiOznaka = document.getElementById('btnPonistiOznaka');
   if (btnPonistiOznaka) {
@@ -948,9 +940,17 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  // Auto-open modal za edit interne oznake
+  <?php if ($edit_oznaka > 0): ?>
+  const interneOznakeModal = document.getElementById('interneOznakeModal');
+  if (interneOznakeModal) {
+    interneOznakeModal.classList.add('show');
+  }
+  <?php endif; ?>
 });
 
-// Delete funkcija za interne oznake
+// Delete funkcija za interne oznake (globalna funkcija, izvan DOMContentLoaded)
 function deleteInternaOznaka(id) {
   if (!confirm('Jeste li sigurni da želite obrisati ovu internu oznaku korisnika?')) {
     return;
