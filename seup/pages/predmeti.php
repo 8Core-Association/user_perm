@@ -500,14 +500,6 @@ print '<div class="seup-table-stats">';
 print '<i class="fas fa-info-circle me-2"></i>';
 print '<span>Prikazano <strong id="visibleCount">' . count($predmeti) . '</strong> od <strong>' . count($predmeti) . '</strong> predmeta</span>';
 print '</div>';
-print '<div class="seup-table-actions">';
-print '<button type="button" class="seup-btn seup-btn-secondary seup-btn-sm" id="exportBtn">';
-print '<i class="fas fa-download me-2"></i>Izvoz Excel';
-print '</button>';
-print '<button type="button" class="seup-btn seup-btn-secondary seup-btn-sm" id="printBtn">';
-print '<i class="fas fa-print me-2"></i>Ispis';
-print '</button>';
-print '</div>';
 print '</div>';
 
 print '</div>'; // seup-settings-card
@@ -799,20 +791,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
             openAssignModal(id, klasa, naziv);
         });
-    });
-
-    // Export and print handlers
-    document.getElementById('exportBtn').addEventListener('click', function() {
-        this.classList.add('seup-loading');
-        // Implement export functionality
-        setTimeout(() => {
-            this.classList.remove('seup-loading');
-            showMessage('Excel izvoz je pokrenut', 'success');
-        }, 2000);
-    });
-
-    document.getElementById('printBtn').addEventListener('click', function() {
-        window.print();
     });
 
     // Utility functions
