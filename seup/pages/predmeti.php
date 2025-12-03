@@ -102,6 +102,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // PERMISSION CHECK: Only admin or kreator can archive
+        if (!$user->admin) {
+            // Check if user is the kreator
+            $sql = "SELECT ID_interna_oznaka_korisnika FROM " . MAIN_DB_PREFIX . "a_predmet WHERE ID_predmeta = " . (int)$predmet_id;
+            $resql = $db->query($sql);
+            if ($resql && $obj = $db->fetch_object($resql)) {
+                if ($obj->ID_interna_oznaka_korisnika != $user->id) {
+                    echo json_encode(['success' => false, 'error' => 'Nemate dozvolu za arhiviranje ovog predmeta']);
+                    exit;
+                }
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Predmet nije pronađen']);
+                exit;
+            }
+        }
+
         // Ensure new archive table structure
         Predmet_helper::ensureArhivaTableStructure($db);
 
@@ -194,6 +210,7 @@ $sql = "SELECT
             p.zaprimljeno_datum,
             p.fk_user_assigned,
             p.date_assigned,
+            p.ID_interna_oznaka_korisnika,
             DATE_FORMAT(p.tstamp_created, '%d/%m/%Y') as datum_otvaranja,
             u.name_ustanova,
             k.ime_prezime,
@@ -436,9 +453,14 @@ if (count($predmeti)) {
         print '<button class="seup-action-btn seup-btn-edit" title="Uredi" data-id="' . $predmet->ID_predmeta . '">';
         print '<i class="fas fa-edit"></i>';
         print '</button>';
-        print '<button class="seup-action-btn seup-btn-archive" title="Arhiviraj" data-id="' . $predmet->ID_predmeta . '">';
-        print '<i class="fas fa-archive"></i>';
-        print '</button>';
+
+        // Only admin or kreator can archive
+        if ($user->admin || $predmet->ID_interna_oznaka_korisnika == $user->id) {
+            print '<button class="seup-action-btn seup-btn-archive" title="Arhiviraj" data-id="' . $predmet->ID_predmeta . '">';
+            print '<i class="fas fa-archive"></i>';
+            print '</button>';
+        }
+
         if ($user->admin) {
             print '<button class="seup-action-btn seup-btn-assign" title="Dodijeli korisniku" data-id="' . $predmet->ID_predmeta . '">';
             print '<i class="fas fa-user-plus"></i>';
