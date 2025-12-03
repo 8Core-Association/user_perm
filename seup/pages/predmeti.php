@@ -348,7 +348,7 @@ print sortableHeader('klasa_br', 'Klasa', $sortField, $sortOrder, 'fas fa-layer-
 print sortableHeader('naziv_predmeta', 'Naziv Predmeta', $sortField, $sortOrder, 'fas fa-heading');
 print '<th class="seup-table-th"><i class="fas fa-paper-plane me-2"></i>Pošiljatelj</th>';
 print '<th class="seup-table-th"><i class="fas fa-inbox me-2"></i>Zaprimljeno</th>';
-print sortableHeader('ime_prezime', 'Zaposlenik', $sortField, $sortOrder, 'fas fa-user');
+print sortableHeader('ime_prezime', 'Otvorio', $sortField, $sortOrder, 'fas fa-user');
 print sortableHeader('tstamp_created', 'Otvoreno', $sortField, $sortOrder, 'fas fa-calendar');
 print '<th class="seup-table-th"><i class="fas fa-user-check me-2"></i>Dodijeljeno</th>';
 print '<th class="seup-table-th"><i class="fas fa-cogs me-2"></i>Akcije</th>';
