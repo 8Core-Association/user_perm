@@ -299,9 +299,11 @@ print '<h3 class="seup-card-title">Aktivni Predmeti</h3>';
 print '<p class="seup-card-description">Pregled svih otvorenih predmeta s mogućnostima sortiranja i pretraživanja</p>';
 print '</div>';
 print '<div class="seup-card-actions">';
-print '<a href="../pages/novi_predmet.php" class="seup-btn seup-btn-primary" id="noviPredmetBtn" role="button">';
-print '<i class="fas fa-plus me-2"></i>Novi Predmet';
-print '</a>';;
+if ($user->admin) {
+    print '<a href="../pages/novi_predmet.php" class="seup-btn seup-btn-primary" id="noviPredmetBtn" role="button">';
+    print '<i class="fas fa-plus me-2"></i>Novi Predmet';
+    print '</a>';;
+}
 print '</div>';
 print '</div>';
 
@@ -478,9 +480,11 @@ if (count($predmeti)) {
     print '<i class="fas fa-folder-open seup-empty-icon"></i>';
     print '<h4 class="seup-empty-title">Nema otvorenih predmeta</h4>';
     print '<p class="seup-empty-description">Kreirajte novi predmet za početak rada</p>';
-    print '<button type="button" class="seup-btn seup-btn-primary mt-3" id="noviPredmetBtn2">';
-    print '<i class="fas fa-plus me-2"></i>Kreiraj prvi predmet';
-    print '</button>';
+    if ($user->admin) {
+        print '<button type="button" class="seup-btn seup-btn-primary mt-3" id="noviPredmetBtn2">';
+        print '<i class="fas fa-plus me-2"></i>Kreiraj prvi predmet';
+        print '</button>';
+    }
     print '</div>';
     print '</td>';
     print '</tr>';
