@@ -1890,3 +1890,11 @@ body {
     justify-content: center;
   }
 }
+
+/* Sakrij Dolibarr ECM (GED) modul iz top menija */
+.mainmenu.ecm,
+.tmenu[data-mainmenu="ecm"],
+a.tmenu[href*="/ecm/"],
+li.tmenu:has(a[href*="/ecm/"]) {
+    display: none !important;
+}
