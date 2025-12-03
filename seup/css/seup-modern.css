@@ -1891,10 +1891,14 @@ body {
   }
 }
 
-/* Sakrij Dolibarr ECM (GED) modul iz top menija */
+/* Sakrij Dolibarr ECM (GED) i Alati module iz top menija */
 .mainmenu.ecm,
 .tmenu[data-mainmenu="ecm"],
 a.tmenu[href*="/ecm/"],
-li.tmenu:has(a[href*="/ecm/"]) {
+li.tmenu:has(a[href*="/ecm/"]),
+.mainmenu.tools,
+.tmenu[data-mainmenu="tools"],
+a.tmenu[href*="/core/tools"],
+li.tmenu:has(a[href*="/core/tools"]) {
     display: none !important;
 }
