@@ -166,6 +166,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
   }
 
+  // 1.b AJAX endpoint za dohvat podataka internih oznaka korisnika
+  if (isset($_POST['action_oznaka']) && $_POST['action_oznaka'] === 'get_user_data') {
+    header('Content-Type: application/json; charset=UTF-8');
+    if (function_exists('ob_get_level') && ob_get_level() > 0) { ob_end_clean(); }
+
+    $ime_user = GETPOST('ime_user', 'alphanohtml');
+    if (empty($ime_user)) {
+      http_response_code(400);
+      echo json_encode(['success' => false, 'error' => 'Ime korisnika nije poslano']);
+      exit;
+    }
+
+    $sql = "SELECT rbr, naziv FROM " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika WHERE ime_prezime = '" . $db->escape($ime_user) . "' LIMIT 1";
+    $resql = $db->query($sql);
+
+    if ($resql && $db->num_rows($resql) > 0) {
+      $obj = $db->fetch_object($resql);
+      echo json_encode([
+        'success' => true,
+        'data' => [
+          'redni_broj' => (int)$obj->rbr,
+          'radno_mjesto' => $obj->naziv
+        ]
+      ]);
+    } else {
+      echo json_encode([
+        'success' => false,
+        'message' => 'Korisnik nema unesene podatke'
+      ]);
+    }
+    exit;
+  }
+
   // 2) OZNAKA USTANOVE (AJAX JSON kao u tvom kodu)
   if (isset($_POST['action_ustanova'])) {
     header('Content-Type: application/json; charset=UTF-8');
@@ -697,6 +730,59 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e){ if(!e.target.closest('.seup-autocomplete-container')) clearResults(); });
   }
 
+  // Interne oznake korisnika - load existing data
+  const userSelect = document.getElementById('ime_user');
+  const redniBrojInput = document.getElementById('redni_broj');
+  const radnoMjestoInput = document.getElementById('radno_mjesto_korisnika');
+
+  if (userSelect && redniBrojInput && radnoMjestoInput) {
+    userSelect.addEventListener('change', async function() {
+      const selectedUser = this.value;
+
+      if (!selectedUser) {
+        redniBrojInput.value = '';
+        radnoMjestoInput.value = '';
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('action_oznaka', 'get_user_data');
+        formData.append('ime_user', selectedUser);
+
+        const response = await fetch('<?php echo $_SERVER["PHP_SELF"]; ?>', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          redniBrojInput.value = result.data.redni_broj;
+          radnoMjestoInput.value = result.data.radno_mjesto;
+          showMessage('Podaci učitani', 'success', 2000);
+        } else {
+          redniBrojInput.value = '';
+          radnoMjestoInput.value = '';
+          if (result.message) {
+            showMessage(result.message, 'info', 2000);
+          }
+        }
+      } catch (error) {
+        console.error('Greška pri dohvaćanju podataka:', error);
+        showMessage('Greška pri učitavanju podataka', 'error');
+      }
+    });
+  }
+
   // Toast poruke
   window.showMessage = function(message, type='success', duration=5000){
     let el = document.querySelector('.seup-message-toast');
@@ -713,6 +799,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .seup-message-toast.show{transform:translateX(0)}
 .seup-message-success{background:linear-gradient(135deg,#16a34a,#15803d)}
 .seup-message-error{background:linear-gradient(135deg,#ef4444,#dc2626)}
+.seup-message-info{background:linear-gradient(135deg,#3b82f6,#2563eb)}
 .seup-btn.seup-loading{position:relative;color:transparent}
 .seup-btn.seup-loading::after{content:'';position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid transparent;border-top:2px solid currentColor;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
