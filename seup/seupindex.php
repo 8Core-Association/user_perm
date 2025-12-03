@@ -222,14 +222,18 @@ print '<p class="seup-hero-subtitle">Moderan i efikasan način upravljanja dokum
 // Action cards
 print '<div class="seup-actions">';
 
+// Check if user is admin
+$is_admin = ($user->admin == 1);
+
 // Novi Predmet card
-print '<a href="' . dol_buildpath('/custom/seup/pages/novi_predmet.php', 1) . '" class="seup-action-card">';
+$novi_predmet_class = $is_admin ? 'seup-action-card' : 'seup-action-card seup-action-card-disabled';
+print '<a href="' . ($is_admin ? dol_buildpath('/custom/seup/pages/novi_predmet.php', 1) : '#') . '" class="' . $novi_predmet_class . '">';
 print '<div class="seup-action-icon"><i class="fas fa-plus"></i></div>';
 print '<h3 class="seup-action-title">Novi Predmet</h3>';
 print '<p class="seup-action-description">Kreirajte novi predmet s klasifikacijskim oznakama i povezanim dokumentima</p>';
 print '</a>';
 
-// Predmeti card
+// Predmeti card (always enabled)
 print '<a href="' . dol_buildpath('/custom/seup/pages/predmeti.php', 1) . '" class="seup-action-card">';
 print '<div class="seup-action-icon"><i class="fas fa-folder-open"></i></div>';
 print '<h3 class="seup-action-title">Predmeti</h3>';
@@ -237,14 +241,16 @@ print '<p class="seup-action-description">Pregledajte i upravljajte svim aktivni
 print '</a>';
 
 // Plan Klasifikacijskih Oznaka card
-print '<a href="' . dol_buildpath('/custom/seup/pages/plan_klasifikacijskih_oznaka.php', 1) . '" class="seup-action-card">';
+$plan_class = $is_admin ? 'seup-action-card' : 'seup-action-card seup-action-card-disabled';
+print '<a href="' . ($is_admin ? dol_buildpath('/custom/seup/pages/plan_klasifikacijskih_oznaka.php', 1) : '#') . '" class="' . $plan_class . '">';
 print '<div class="seup-action-icon"><i class="fas fa-sitemap"></i></div>';
 print '<h3 class="seup-action-title">Plan Klasifikacijskih Oznaka</h3>';
 print '<p class="seup-action-description">Upravljanje hijerarhijskim sustavom klasifikacije dokumenata</p>';
 print '</a>';
 
 // Postavke card
-print '<a href="' . dol_buildpath('/custom/seup/pages/postavke.php', 1) . '" class="seup-action-card">';
+$postavke_class = $is_admin ? 'seup-action-card' : 'seup-action-card seup-action-card-disabled';
+print '<a href="' . ($is_admin ? dol_buildpath('/custom/seup/pages/postavke.php', 1) : '#') . '" class="' . $postavke_class . '">';
 print '<div class="seup-action-icon"><i class="fas fa-cog"></i></div>';
 print '<h3 class="seup-action-title">Postavke</h3>';
 print '<p class="seup-action-description">Konfigurirajte sustav, korisničke oznake i parametre ustanove</p>';

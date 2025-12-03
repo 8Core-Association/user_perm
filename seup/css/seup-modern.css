@@ -414,6 +414,43 @@ body {
   color: white;
 }
 
+.seup-action-card-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  position: relative;
+}
+
+.seup-action-card-disabled::after {
+  content: 'Samo za administratore';
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: var(--warning-100);
+  color: var(--warning-800);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warning-300);
+  z-index: 1;
+}
+
+.seup-action-card-disabled:hover {
+  transform: none;
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.seup-action-card-disabled .seup-action-icon {
+  background: linear-gradient(135deg, var(--secondary-400), var(--secondary-500));
+}
+
+.seup-action-card-disabled:hover .seup-action-icon {
+  transform: none;
+  background: linear-gradient(135deg, var(--secondary-400), var(--secondary-500));
+}
+
 .seup-action-title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
