@@ -436,3 +436,32 @@ Dokumentacija ažurirana: README, struktura, changelog.
 - ♿ **Accessibility** - Jasno označeno za screen readere
 
 ---
+
+## 5.0.3 – UI Cleanup (Hide ECM & Tools)
+
+**Datum:** 03.12.2025
+
+### UI/UX Poboljšanja
+- 🧹 **Sakrivanje ECM modula** - ECM (GED) ikona više nije vidljiva u top meniju
+- 🔧 **Sakrivanje Alati modula** - Alati ikona uklonjena iz top menija
+- ✅ **Moduli ostaju aktivni** - Funkcionalnost radi u pozadini (privitci, sistemske funkcije)
+- 🎯 **Cleaner interface** - Korisnici imaju fokusiraniju navigaciju
+
+### CSS implementacija
+- 📐 **seup-modern.css** - Dodani CSS selektori za skrivanje ikona
+  - `.mainmenu.ecm` - Sakriva ECM top menu item
+  - `.mainmenu.tools` - Sakriva Alati top menu item
+  - `display: none !important` - Forcing visibility override
+  - Kombinacija selektora za sve moguće prikaze (tmenu, href matching)
+
+### Backend integracija
+- 🔧 **modSEUP.class.php** - Registriran `seup-modern.css` u modul config
+  - CSS se automatski učitava na svim stranicama
+  - Integracija s Dolibarr CSS loading sistemom
+
+### Korisničko iskustvo
+- 💡 **Principle: Hide, don't disable** - Module rade, ali ne ometaju korisnika
+- 🎭 **Out of sight, out of mind** - Jednostavnija navigacija bez nepotrebnih opcija
+- ✨ **Seamless integration** - Nema potrebe za dodatnim postavkama ili konfiguracijama
+
+---
