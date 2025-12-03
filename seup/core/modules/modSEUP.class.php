@@ -71,7 +71,7 @@ class modSEUP extends DolibarrModules
 		// Module description, used if translation string 'ModuleSEUPDesc' not found (SEUP is name of module).
 		$this->description = 'SEUP Sustav Elektronskog Uredskog Poslovanja';
 		// Used only if file README.md and README-LL.md not found.
-		$this->descriptionlong = "SEUPDescription";
+		$this->descriptionlong = "Sustav Elektronskog Uredskog Poslovanja";
 
 		// Author
 		$this->editor_name = '8Core Association';
