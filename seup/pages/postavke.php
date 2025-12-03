@@ -536,7 +536,7 @@ print '</div>';
 print '<div class="seup-modal-body">';
 print '<form method="post" action="'.$_SERVER['PHP_SELF'].'" class="seup-form">';
 print '<div class="seup-form-grid"><div class="seup-form-group"><label class="seup-label">Korisnik</label><input type="text" name="ime_user" id="ime_user" class="seup-input" list="user-list" placeholder="Unesite ili odaberite korisnika" required autocomplete="off"><datalist id="user-list">';
-foreach ($listUsers as $u) { print '<option value="'.htmlspecialchars($u->getFullName($langs)).'">"; }
+foreach ($listUsers as $u) { print '<option value="'.htmlspecialchars($u->getFullName($langs)).'"></option>'; }
 print '</datalist></div><div class="seup-form-group"><label class="seup-label">Redni broj (0-99)</label><input type="number" name="redni_broj" id="redni_broj" class="seup-input" min="0" max="99" required></div></div>';
 print '<div class="seup-form-group"><label class="seup-label">Radno mjesto</label><input type="text" name="radno_mjesto_korisnika" id="radno_mjesto_korisnika" class="seup-input" required></div>';
 print '<div class="seup-form-actions"><button type="submit" name="action_oznaka" value="add" class="seup-btn seup-btn-primary"><i class="fas fa-plus"></i> Dodaj</button><button type="submit" name="action_oznaka" value="update" class="seup-btn seup-btn-secondary"><i class="fas fa-edit"></i> Ažuriraj</button><button type="submit" name="action_oznaka" value="delete" class="seup-btn seup-btn-danger"><i class="fas fa-trash"></i> Obriši</button></div>';
