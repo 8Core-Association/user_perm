@@ -315,3 +315,124 @@ Dokumentacija ažurirana: README, struktura, changelog.
 - 📊 **Indexi na ključnim poljima** - Brže pretraživanje i filtriranje
 
 ---
+
+## 5.0.1 – Assignment System (Dodjela Predmeta)
+
+**Datum:** 02.12.2025
+
+### Nova funkcionalnost - Sustav dodjele predmeta
+- 👥 **Assignment System** - Mogućnost dodjeljivanja predmeta određenim korisnicima
+- 🔒 **Ograničen pristup** - Korisnici vide samo predmete dodijeljene njima ili svima
+- 👨‍💼 **Admin override** - Administratori uvijek vide sve predmete bez obzira na dodjelu
+- 🎯 **Ciljana dodjela** - Mogućnost odabira više korisnika za jedan predmet
+- ✨ **Jednostavna selekcija** - Checkboxes za brz odabir korisnika
+
+### UI/UX komponente
+- 🎨 **Modal za dodjelu** - Elegantan popup s listom korisnika
+- 🔘 **Checkbox selekcija** - Intuitivno odabiranje korisnika
+- 💡 **"Svi korisnici" opcija** - Brzo dodjeljivanje svima jednim klikom
+- 📝 **Prikaz dodijeljenih korisnika** - Lista s imenima korisnika u tablici predmeta
+- 🔍 **Badge indikatori** - Vizualna oznaka broja dodijeljenih korisnika
+- ⚡ **Live update** - Trenutna promjena bez osvježavanja stranice
+
+### Database strukture
+- 🗃️ **Dodani stupci u llx_a_predmeti**:
+  - `assigned_user_ids` (TEXT) - JSON array s ID-jevima korisnika
+  - `assigned_to_all` (TINYINT) - Flag za dodjelu svim korisnicima
+  - `assigned_by` (INT) - Korisnik koji je dodjelio predmet
+  - `assignment_date` (DATETIME) - Datum dodjele
+
+### Backend komponente
+- 🔧 **assignment_helper.class.php** - Core logika za upravljanje dodjelama
+  - `assignPredmetToUsers()` - Dodjeljivanje predmeta korisnicima
+  - `getAssignedUsers()` - Dohvaćanje dodijeljenih korisnika
+  - `isUserAssignedToPredmet()` - Provjera pristupa korisnika
+  - `unassignPredmet()` - Uklanjanje dodjela
+
+- 📄 **predmeti.php** - Ažuriran za filtriranje predmeta po dodjelama
+  - WHERE uvjet za ograničen pristup
+  - Admin bypass logika
+  - Prikaz dodijeljenih korisnika u tablici
+
+- 🔌 **request_handler.class.php** - Proširena AJAX logika
+  - `assign_predmet` action - Spremanje dodjela
+  - Integracija s assignment_helper classom
+
+### Frontend komponente
+- 🎨 **predmeti.css** - Stilovi za modal, checkboxove i badge
+- ⚡ **predmeti.js** - JavaScript logika
+  - `openAssignModal()` - Otvaranje modala za dodjelu
+  - `toggleAllUsers()` - Kontrola "Svi korisnici" opcije
+  - `saveAssignment()` - AJAX spremanje dodjela
+  - Event handling za checkboxove
+
+### Sigurnosne značajke
+- 🔐 **Permission checks** - Samo vlasnik ili admin može dodjeljivati
+- 🛡️ **Data validation** - Validacija korisničkih ID-ova
+- 🧹 **XSS zaštita** - Sanitizacija svih inputa
+- ✅ **SQL injection zaštita** - Prepared statements
+
+### Dokumentacija
+- 📚 **ASSIGNMENT_IMPLEMENTATION.md** - Detaljna tehnička dokumentacija
+  - Database design
+  - Business rules
+  - Security considerations
+  - API referenca
+
+---
+
+## 5.0.2 – Access Control & UI Improvements
+
+**Datum:** 03.12.2025
+
+### Access Control (Kontrola pristupa)
+- 🔒 **Disabled action cards** - Ne-admin korisnici ne mogu pristupiti osjetljivim funkcijama
+- 🎯 **Role-based UI** - Vizualno razlikovanje dostupnih i nedostupnih opcija
+- 👁️ **Transparency & visibility** - Korisnici vide što postoji, ali znaju da nemaju pristup
+
+### Ograničen pristup za ne-admin korisnike
+- 🚫 **Novi Predmet** - Disabled za obične korisnike
+- 🚫 **Plan Klasifikacijskih Oznaka** - Disabled za obične korisnike
+- 🚫 **Postavke** - Disabled za obične korisnike
+- ✅ **Predmeti** - Uvijek dostupno svim korisnicima
+
+### UI/UX komponente
+- 🎨 **Disabled card styling** - Siva kartica, opacity 0.6
+- 🏷️ **Admin badge** - "Samo za administratore" oznaka
+- 🖱️ **Cursor feedback** - `cursor: not-allowed` za disabled kartice
+- 🎭 **Icon styling** - Sive ikone umjesto plavih za disabled
+- 🚫 **Pointer events** - `pointer-events: none` za potpuno onemogućavanje klika
+
+### CSS implementacija
+- 📐 **`.seup-action-card-disabled`** - Novi CSS class za disabled kartice
+  - Smanjena vidljivost (opacity: 0.6)
+  - Onemogućeni hover efekti
+  - Siva ikona umjesto gradient plave
+  - Pozicionirani badge u gornjem desnom kutu
+
+- 🎨 **Badge styling** - Žuta pozadina (warning paleta)
+  - `var(--warning-100)` background
+  - `var(--warning-800)` text color
+  - `var(--warning-300)` border
+  - Zaobljeni kutovi i padding
+
+### Backend logika
+- 🔧 **seupindex.php** - Ažuriran za dinamičko dodavanje disabled klase
+  - `$is_admin = ($user->admin == 1)` - Admin provjera
+  - Conditional class assignment
+  - `href="#"` za disabled kartice (bez navigacije)
+  - Predmeti kartica uvijek aktivna
+
+### User Experience princip
+- 💡 **Opcija 2 implementirana** - Disabled s vizualnim indikatorom
+- ✨ **Prednost over Opcija 3** - Bez iritantnih pop-upa
+- 👍 **User-friendly pristup** - Jasno komunicirano, bez frustracije
+- 📱 **Consistent experience** - Ujednačeno iskustvo na svim uređajima
+
+### Prednosti implementacije
+- ⚡ **Instant feedback** - Korisnik odmah zna što može/ne može
+- 🎯 **Clear communication** - Nema dvojbi o razlozima nedostupnosti
+- 🚀 **Performance** - Bez dodatnih AJAX poziva ili modalnih prozora
+- ♿ **Accessibility** - Jasno označeno za screen readere
+
+---
