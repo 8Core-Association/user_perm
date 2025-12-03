@@ -55,9 +55,13 @@ require_once DOL_DOCUMENT_ROOT . '/core/class/html.form.class.php';
 require_once __DIR__ . '/../class/predmet_helper.class.php';
 require_once __DIR__ . '/../class/request_handler.class.php';
 require_once __DIR__ . '/../class/changelog_sistem.class.php';
+require_once __DIR__ . '/../class/assignment_helper.class.php';
 
 // Ensure database tables exist (including a_arhiva)
 Predmet_helper::createSeupDatabaseTables($db);
+
+// Ensure assignment columns exist
+Assignment_Helper::ensureAssignmentColumns($db);
 
 // Load translation files
 $langs->loadLangs(array("seup@seup"));
@@ -80,29 +84,96 @@ if (!in_array($sortField, $allowedSortFields)) {
 }
 $sortOrder = ($sortOrder === 'ASC') ? 'ASC' : 'DESC';
 
-// Handle POST requests for archiving
+// Handle POST requests for archiving and assignments
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = GETPOST('action', 'alpha');
-    
+
     if ($action === 'archive_predmet') {
         header('Content-Type: application/json');
         ob_end_clean();
-        
+
         $predmet_id = GETPOST('predmet_id', 'int');
         $razlog = GETPOST('razlog', 'alphanohtml');
         $fk_arhivska_gradiva = GETPOST('fk_arhivska_gradiva', 'int');
         $postupak_po_isteku = GETPOST('postupak_po_isteku', 'alpha');
-        
+
         if (!$predmet_id) {
             echo json_encode(['success' => false, 'error' => 'Missing predmet ID']);
             exit;
         }
-        
+
         // Ensure new archive table structure
         Predmet_helper::ensureArhivaTableStructure($db);
-        
+
         $result = Predmet_helper::archivePredmetNew($db, $conf, $user, $predmet_id, $razlog, $fk_arhivska_gradiva, $postupak_po_isteku);
         echo json_encode($result);
+        exit;
+    }
+
+    if ($action === 'assign_user') {
+        header('Content-Type: application/json');
+        ob_end_clean();
+
+        $predmet_id = GETPOST('predmet_id', 'int');
+        $user_id = GETPOST('user_id', 'int');
+
+        if (!$predmet_id || !$user_id) {
+            echo json_encode(['success' => false, 'error' => 'Missing parameters']);
+            exit;
+        }
+
+        if (!$user->admin) {
+            echo json_encode(['success' => false, 'error' => 'Samo admin može dodijeljivati predmete']);
+            exit;
+        }
+
+        $result = Assignment_Helper::assignUser($db, $predmet_id, $user_id, $user->id);
+
+        if ($result) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Korisnik uspješno dodijeljen predmetu'
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Database error']);
+        }
+        exit;
+    }
+
+    if ($action === 'unassign_user') {
+        header('Content-Type: application/json');
+        ob_end_clean();
+
+        $predmet_id = GETPOST('predmet_id', 'int');
+
+        if (!$predmet_id) {
+            echo json_encode(['success' => false, 'error' => 'Missing predmet ID']);
+            exit;
+        }
+
+        if (!$user->admin) {
+            echo json_encode(['success' => false, 'error' => 'Samo admin može ukloniti dodjelu']);
+            exit;
+        }
+
+        $result = Assignment_Helper::unassignUser($db, $predmet_id);
+
+        if ($result) {
+            echo json_encode(['success' => true, 'message' => 'Dodjela uklonjena']);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Database error']);
+        }
+        exit;
+    }
+
+    if ($action === 'get_assigned_user') {
+        header('Content-Type: application/json');
+        ob_end_clean();
+
+        $predmet_id = GETPOST('predmet_id', 'int');
+        $assigned_user = Assignment_Helper::getAssignedUser($db, $predmet_id);
+
+        echo json_encode(['success' => true, 'user' => $assigned_user]);
         exit;
     }
 }
@@ -110,8 +181,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Use helper to build ORDER BY
 $orderByClause = Predmet_helper::buildOrderByKlasa($sortField, $sortOrder);
 
-// Fetch all open cases with proper sorting
-$sql = "SELECT 
+// Fetch all open cases with proper sorting AND permission filter
+$sql = "SELECT
             p.ID_predmeta,
             p.klasa_br,
             p.sadrzaj,
@@ -121,18 +192,35 @@ $sql = "SELECT
             p.naziv_predmeta,
             p.naziv as posiljatelj_naziv,
             p.zaprimljeno_datum,
+            p.fk_user_assigned,
+            p.date_assigned,
             DATE_FORMAT(p.tstamp_created, '%d/%m/%Y') as datum_otvaranja,
             u.name_ustanova,
             k.ime_prezime,
-            ko.opis_klasifikacijske_oznake
+            ko.opis_klasifikacijske_oznake,
+            assigned_user.firstname as assigned_firstname,
+            assigned_user.lastname as assigned_lastname
         FROM " . MAIN_DB_PREFIX . "a_predmet p
         LEFT JOIN " . MAIN_DB_PREFIX . "a_oznaka_ustanove u ON p.ID_ustanove = u.ID_ustanove
         LEFT JOIN " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika k ON p.ID_interna_oznaka_korisnika = k.ID
         LEFT JOIN " . MAIN_DB_PREFIX . "a_klasifikacijska_oznaka ko ON p.ID_klasifikacijske_oznake = ko.ID_klasifikacijske_oznake
+        LEFT JOIN " . MAIN_DB_PREFIX . "user assigned_user ON p.fk_user_assigned = assigned_user.rowid
         WHERE p.ID_predmeta NOT IN (
             SELECT ID_predmeta FROM " . MAIN_DB_PREFIX . "a_arhiva WHERE status_arhive = 'active'
-        )
-        {$orderByClause}";
+        )";
+
+// PERMISSION FILTER: Regular users see only assigned predmeti
+if (!$user->admin) {
+    $accessible_ids = Assignment_Helper::getAccessiblePredmetiIds($db, $user);
+
+    if (empty($accessible_ids)) {
+        $sql .= " AND 1 = 0"; // No access = empty result
+    } else {
+        $sql .= " AND p.ID_predmeta IN (" . implode(',', array_map('intval', $accessible_ids)) . ")";
+    }
+}
+
+$sql .= " {$orderByClause}";
 
 $resql = $db->query($sql);
 $predmeti = [];
@@ -262,6 +350,7 @@ print '<th class="seup-table-th"><i class="fas fa-paper-plane me-2"></i>Pošilja
 print '<th class="seup-table-th"><i class="fas fa-inbox me-2"></i>Zaprimljeno</th>';
 print sortableHeader('ime_prezime', 'Zaposlenik', $sortField, $sortOrder, 'fas fa-user');
 print sortableHeader('tstamp_created', 'Otvoreno', $sortField, $sortOrder, 'fas fa-calendar');
+print '<th class="seup-table-th"><i class="fas fa-user-check me-2"></i>Dodijeljeno</th>';
 print '<th class="seup-table-th"><i class="fas fa-cogs me-2"></i>Akcije</th>';
 print '</tr>';
 print '</thead>';
@@ -324,6 +413,20 @@ if (count($predmeti)) {
         print '</div>';
         print '</td>';
 
+        // Dodijeljeno (Assigned User)
+        print '<td class="seup-table-td">';
+        if (!empty($predmet->fk_user_assigned) && !empty($predmet->assigned_firstname)) {
+            print '<div class="seup-assigned-user">';
+            print '<span class="seup-user-badge" title="Dodijeljeno: ' . htmlspecialchars($predmet->assigned_firstname . ' ' . $predmet->assigned_lastname) . '">';
+            print '<i class="fas fa-user me-1"></i>';
+            print htmlspecialchars($predmet->assigned_firstname . ' ' . substr($predmet->assigned_lastname, 0, 1) . '.');
+            print '</span>';
+            print '</div>';
+        } else {
+            print '<span class="seup-empty-field">Nije dodijeljeno</span>';
+        }
+        print '</td>';
+
         // Action buttons
         print '<td class="seup-table-td">';
         print '<div class="seup-action-buttons">';
@@ -336,6 +439,11 @@ if (count($predmeti)) {
         print '<button class="seup-action-btn seup-btn-archive" title="Arhiviraj" data-id="' . $predmet->ID_predmeta . '">';
         print '<i class="fas fa-archive"></i>';
         print '</button>';
+        if ($user->admin) {
+            print '<button class="seup-action-btn seup-btn-assign" title="Dodijeli korisniku" data-id="' . $predmet->ID_predmeta . '">';
+            print '<i class="fas fa-user-plus"></i>';
+            print '</button>';
+        }
         print '</div>';
         print '</td>';
 
@@ -343,7 +451,7 @@ if (count($predmeti)) {
     }
 } else {
     print '<tr class="seup-table-row">';
-    print '<td colspan="8" class="seup-table-empty">';
+    print '<td colspan="9" class="seup-table-empty">';
     print '<div class="seup-empty-state">';
     print '<i class="fas fa-folder-open seup-empty-icon"></i>';
     print '<h4 class="seup-empty-title">Nema otvorenih predmeta</h4>';
@@ -450,6 +558,66 @@ print '</div>';
 print '</div>';
 print '<div class="seup-modal-footer">';
 print '<button type="button" class="seup-btn seup-btn-secondary" id="closePreviewBtn">Zatvori</button>';
+print '</div>';
+print '</div>';
+print '</div>';
+
+// Assignment Modal
+print '<div class="seup-modal" id="assignUserModal">';
+print '<div class="seup-modal-content" style="max-width: 600px;">';
+print '<div class="seup-modal-header">';
+print '<h5 class="seup-modal-title"><i class="fas fa-user-plus me-2"></i>Dodijeli Predmet Korisniku</h5>';
+print '<button type="button" class="seup-modal-close" id="closeAssignModal">&times;</button>';
+print '</div>';
+print '<div class="seup-modal-body">';
+
+print '<div class="seup-alert seup-alert-info">';
+print '<i class="fas fa-info-circle me-2"></i>';
+print 'Predmet: <strong id="assign_klasa"></strong><br>';
+print '<span id="assign_naziv"></span>';
+print '</div>';
+
+print '<div class="seup-form-group">';
+print '<label class="seup-label"><i class="fas fa-user me-2"></i>Odaberite korisnika *</label>';
+print '<select id="assignUserSelect" class="seup-select" required>';
+print '<option value="">-- Odaberite korisnika --</option>';
+
+// Populate users from llx_user
+$activeUsers = Assignment_Helper::getActiveUsers($db, $conf);
+foreach ($activeUsers as $activeUser) {
+    print '<option value="' . $activeUser->rowid . '">';
+    print htmlspecialchars($activeUser->lastname . ' ' . $activeUser->firstname);
+    if ($activeUser->email) {
+        print ' (' . htmlspecialchars($activeUser->email) . ')';
+    }
+    print '</option>';
+}
+
+print '</select>';
+print '</div>';
+
+print '<div class="seup-assigned-current" id="currentAssignment" style="display: none;">';
+print '<h6 class="seup-section-title"><i class="fas fa-user-check"></i> Trenutno dodijeljeno</h6>';
+print '<div class="seup-assigned-user-item">';
+print '<div class="seup-assigned-user-info">';
+print '<div class="seup-user-avatar" id="current_user_avatar">JD</div>';
+print '<div class="seup-user-details">';
+print '<h6 id="current_user_name">John Doe</h6>';
+print '<span class="seup-user-role" id="current_user_date">Dodijeljeno: 01.12.2025</span>';
+print '</div>';
+print '</div>';
+print '<button type="button" class="seup-unassign-btn" id="unassignBtn">';
+print '<i class="fas fa-times"></i> Ukloni';
+print '</button>';
+print '</div>';
+print '</div>';
+
+print '</div>';
+print '<div class="seup-modal-footer">';
+print '<button type="button" class="seup-btn seup-btn-secondary" id="cancelAssignBtn">Odustani</button>';
+print '<button type="button" class="seup-btn seup-btn-primary" id="confirmAssignBtn">';
+print '<i class="fas fa-user-plus me-2"></i>Dodijeli';
+print '</button>';
 print '</div>';
 print '</div>';
 print '</div>';
@@ -585,11 +753,25 @@ document.addEventListener("DOMContentLoaded", function() {
             const row = this.closest('.seup-table-row');
             const klasaCell = row.querySelector('.seup-klasa-link');
             const nazivCell = row.querySelector('.seup-naziv-cell');
-            
+
             const klasa = klasaCell ? klasaCell.textContent : 'N/A';
             const naziv = nazivCell ? nazivCell.getAttribute('title') || nazivCell.textContent : 'N/A';
-            
+
             openArchiveModal(id, klasa, naziv);
+        });
+    });
+
+    document.querySelectorAll('.seup-btn-assign').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const row = this.closest('.seup-table-row');
+            const klasaCell = row.querySelector('.seup-klasa-link');
+            const nazivCell = row.querySelector('.seup-naziv-cell');
+
+            const klasa = klasaCell ? klasaCell.textContent : 'N/A';
+            const naziv = nazivCell ? nazivCell.getAttribute('title') || nazivCell.textContent : 'N/A';
+
+            openAssignModal(id, klasa, naziv);
         });
     });
 
@@ -823,6 +1005,165 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('archiveModal').addEventListener('click', function(e) {
         if (e.target === this) {
             closeArchiveModal();
+        }
+    });
+
+    // ========================================================================
+    // ASSIGNMENT MODAL FUNCTIONALITY
+    // ========================================================================
+
+    let currentAssignPredmetId = null;
+
+    function openAssignModal(predmetId, klasa, naziv) {
+        currentAssignPredmetId = predmetId;
+
+        document.getElementById('assign_klasa').textContent = klasa;
+        document.getElementById('assign_naziv').textContent = naziv;
+
+        // Reset select
+        document.getElementById('assignUserSelect').value = '';
+
+        // Load current assignment
+        loadCurrentAssignment(predmetId);
+
+        document.getElementById('assignUserModal').classList.add('show');
+    }
+
+    function closeAssignModal() {
+        document.getElementById('assignUserModal').classList.remove('show');
+        document.getElementById('assignUserSelect').value = '';
+        document.getElementById('currentAssignment').style.display = 'none';
+        currentAssignPredmetId = null;
+    }
+
+    function loadCurrentAssignment(predmetId) {
+        fetch('predmeti.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=get_assigned_user&predmet_id=${predmetId}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.user && data.user.fk_user_assigned) {
+                // Show current assignment
+                const user = data.user;
+                const fullName = user.firstname + ' ' + user.lastname;
+                const initials = (user.firstname.charAt(0) + user.lastname.charAt(0)).toUpperCase();
+                const dateAssigned = user.date_assigned ? new Date(user.date_assigned).toLocaleDateString('hr-HR') : 'N/A';
+
+                document.getElementById('current_user_avatar').textContent = initials;
+                document.getElementById('current_user_name').textContent = fullName;
+                document.getElementById('current_user_date').textContent = 'Dodijeljeno: ' + dateAssigned;
+                document.getElementById('currentAssignment').style.display = 'block';
+
+                // Pre-select in dropdown
+                document.getElementById('assignUserSelect').value = user.fk_user_assigned;
+            } else {
+                document.getElementById('currentAssignment').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading assignment:', error);
+        });
+    }
+
+    function confirmAssign() {
+        const userId = document.getElementById('assignUserSelect').value;
+
+        if (!userId) {
+            showMessage('Molimo odaberite korisnika', 'error');
+            return;
+        }
+
+        if (!currentAssignPredmetId) {
+            showMessage('Greška: Nema odabranog predmeta', 'error');
+            return;
+        }
+
+        const confirmBtn = document.getElementById('confirmAssignBtn');
+        confirmBtn.classList.add('seup-loading');
+
+        const formData = new FormData();
+        formData.append('action', 'assign_user');
+        formData.append('predmet_id', currentAssignPredmetId);
+        formData.append('user_id', userId);
+
+        fetch('predmeti.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message || 'Korisnik uspješno dodijeljen!', 'success');
+                closeAssignModal();
+
+                // Reload page to reflect changes
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showMessage('Greška: ' + (data.error || 'Nepoznata greška'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Assign error:', error);
+            showMessage('Došlo je do greške pri dodjeljivanju', 'error');
+        })
+        .finally(() => {
+            confirmBtn.classList.remove('seup-loading');
+        });
+    }
+
+    function unassignUser() {
+        if (!currentAssignPredmetId) return;
+
+        if (!confirm('Jeste li sigurni da želite ukloniti dodjelu?')) {
+            return;
+        }
+
+        const unassignBtn = document.getElementById('unassignBtn');
+        unassignBtn.classList.add('seup-loading');
+
+        const formData = new FormData();
+        formData.append('action', 'unassign_user');
+        formData.append('predmet_id', currentAssignPredmetId);
+
+        fetch('predmeti.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage('Dodjela uklonjena!', 'success');
+                closeAssignModal();
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showMessage('Greška: ' + (data.error || 'Nepoznata greška'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Unassign error:', error);
+            showMessage('Došlo je do greške', 'error');
+        })
+        .finally(() => {
+            unassignBtn.classList.remove('seup-loading');
+        });
+    }
+
+    // Assignment modal event listeners
+    document.getElementById('closeAssignModal').addEventListener('click', closeAssignModal);
+    document.getElementById('cancelAssignBtn').addEventListener('click', closeAssignModal);
+    document.getElementById('confirmAssignBtn').addEventListener('click', confirmAssign);
+    document.getElementById('unassignBtn').addEventListener('click', unassignUser);
+
+    document.getElementById('assignUserModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAssignModal();
         }
     });
 });
@@ -1449,6 +1790,151 @@ document.addEventListener("DOMContentLoaded", function() {
 .seup-error-message p {
   font-size: 16px;
   margin: 0;
+}
+
+/* ========================================================================
+   ASSIGNMENT STYLES
+   ======================================================================== */
+
+/* Assigned user badge in table */
+.seup-assigned-user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.seup-user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    background: var(--success-100);
+    color: var(--success-700);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    cursor: help;
+}
+
+/* Assignment button */
+.seup-btn-assign {
+    background: var(--success-100);
+    color: var(--success-600);
+}
+
+.seup-btn-assign:hover {
+    background: var(--success-200);
+    color: var(--success-700);
+    transform: scale(1.1);
+}
+
+/* Assignment modal specific styles */
+.seup-assigned-current {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--neutral-200);
+}
+
+.seup-assigned-user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3);
+    background: var(--neutral-50);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-2);
+}
+
+.seup-assigned-user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.seup-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+}
+
+.seup-user-details h6 {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--secondary-900);
+}
+
+.seup-user-role {
+    font-size: var(--text-xs);
+    color: var(--secondary-600);
+}
+
+.seup-unassign-btn {
+    padding: var(--space-2) var(--space-3);
+    background: var(--error-100);
+    color: var(--error-600);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.seup-unassign-btn:hover {
+    background: var(--error-200);
+    color: var(--error-700);
+}
+
+.seup-unassign-btn.seup-loading {
+    position: relative;
+    color: transparent;
+}
+
+.seup-unassign-btn.seup-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.seup-section-title {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--secondary-700);
+    margin: 0 0 var(--space-2) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.seup-alert {
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.seup-alert-info {
+    background: var(--primary-50);
+    color: var(--primary-800);
+    border: 1px solid var(--primary-200);
 }
 </style>
 
