@@ -159,10 +159,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . $db->escape($interna_oznaka_korisnika->getIme_prezime()) . "', '"
                 . $db->escape($interna_oznaka_korisnika->getRbr_korisnika()) . "', '"
                 . $db->escape($interna_oznaka_korisnika->getRadno_mjesto_korisnika()) . "')";
-          if ($db->query($sql)) { $db->commit(); setEventMessages($langs->trans("Intena Oznaka Korisnika uspjesno dodana"), null, 'mesgs'); }
+          if ($db->query($sql)) { $db->commit(); setEventMessages($langs->trans("Intena Oznaka Korisnika uspjesno dodana"), null, 'mesgs'); header('Location: '.$_SERVER['PHP_SELF'].'?tab=interne_oznake&msg=created'); exit; }
           else setEventMessages($langs->trans("Database error: ") . $db->lasterror(), null, 'errors');
         }
       }
+    }
+  }
+
+  // 1.c Update interna oznaka
+  if (isset($_POST['action_oznaka']) && $_POST['action_oznaka'] === 'update') {
+    $rowid = (int) GETPOST('rowid_oznaka', 'int');
+    $interna_oznaka_korisnika = new Interna_oznaka_korisnika();
+    $interna_oznaka_korisnika->setIme_prezime(GETPOST('ime_user', 'alphanohtml'));
+    $interna_oznaka_korisnika->setRbr_korisnika(GETPOST('redni_broj', 'int'));
+    $interna_oznaka_korisnika->setRadno_mjesto_korisnika(GETPOST('radno_mjesto_korisnika', 'alphanohtml'));
+
+    if ($rowid <= 0) {
+      setEventMessages("Nedostaje ID zapisa.", null, 'errors');
+    } elseif (empty($interna_oznaka_korisnika->getIme_prezime()) || $interna_oznaka_korisnika->getRbr_korisnika()==='' || empty($interna_oznaka_korisnika->getRadno_mjesto_korisnika())) {
+      setEventMessages($langs->trans("All fields are required"), null, 'errors');
+    } elseif (!preg_match('/^\d{1,2}$/', (string)$interna_oznaka_korisnika->getRbr_korisnika())) {
+      setEventMessages($langs->trans("Invalid serial number (vrijednosti moraju biti u rasponu 0 - 99)"), null, 'errors');
+    } else {
+      $resCheck = $db->query("SELECT COUNT(*) as cnt FROM " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika WHERE rbr = '" . $db->escape($interna_oznaka_korisnika->getRbr_korisnika()) . "' AND ID_interna_oznaka_korisnika != ".$rowid);
+      if ($resCheck) {
+        $obj = $db->fetch_object($resCheck);
+        if ($obj->cnt > 0) {
+          setEventMessages($langs->trans("Korisnik s tim rednim brojem vec postoji u bazi"), null, 'errors');
+        } else {
+          $db->begin();
+          $sql = "UPDATE " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika SET
+                  ime_prezime='".$db->escape($interna_oznaka_korisnika->getIme_prezime())."',
+                  rbr='".$db->escape($interna_oznaka_korisnika->getRbr_korisnika())."',
+                  naziv='".$db->escape($interna_oznaka_korisnika->getRadno_mjesto_korisnika())."'
+                  WHERE ID_interna_oznaka_korisnika=".$rowid." LIMIT 1";
+          if ($db->query($sql)) {
+            $db->commit();
+            setEventMessages($langs->trans("Interna Oznaka Korisnika uspjesno azurirana"), null, 'mesgs');
+            header('Location: '.$_SERVER['PHP_SELF'].'?tab=interne_oznake&msg=updated');
+            exit;
+          } else {
+            $db->rollback();
+            setEventMessages($langs->trans("Database error: ") . $db->lasterror(), null, 'errors');
+          }
+        }
+      }
+    }
+  }
+
+  // 1.d Delete interna oznaka
+  if (isset($_POST['action_oznaka']) && $_POST['action_oznaka'] === 'delete') {
+    $id = (int) GETPOST('id_oznaka_delete', 'int');
+    if ($id > 0) {
+      $db->begin();
+      $ok = $db->query("DELETE FROM " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika WHERE ID_interna_oznaka_korisnika=".$id." LIMIT 1");
+      if ($ok) {
+        $db->commit();
+        header("Location: ".$_SERVER['PHP_SELF']."?tab=interne_oznake&msg=deleted");
+        exit;
+      } else {
+        $db->rollback();
+        setEventMessages("Brisanje nije uspjelo.", null, 'errors');
+      }
+    } else {
+      setEventMessages("Nedostaje ID za brisanje.", null, 'errors');
     }
   }
 
@@ -393,6 +453,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $tab   = GETPOST('tab','alphanohtml');
 $flash = GETPOST('msg','alphanohtml');
 
+if ($tab === 'interne_oznake') {
+    if ($flash === 'created') setEventMessages('Interna oznaka korisnika je dodana.', null, 'mesgs');
+    elseif ($flash === 'updated') setEventMessages('Interna oznaka korisnika je ažurirana.', null, 'mesgs');
+    elseif ($flash === 'deleted') setEventMessages('Interna oznaka korisnika je obrisana.', null, 'mesgs');
+}
+
 if ($tab === 'trece_osobe') {
     if ($flash === 'created') setEventMessages('Zapis je dodan.', null, 'mesgs');
     elseif ($flash === 'updated') setEventMessages('Zapis je ažuriran.', null, 'mesgs');
@@ -528,19 +594,51 @@ print '</div>';
 
 // Modal 2: Interne oznake korisnika
 print '<div class="seup-modal" id="interneOznakeModal">';
-print '<div class="seup-modal-content">';
+print '<div class="seup-modal-content seup-modal-large">';
 print '<div class="seup-modal-header">';
 print '<h5 class="seup-modal-title"><i class="fas fa-users me-2"></i>Interne Oznake Korisnika</h5>';
 print '<button type="button" class="seup-modal-close">&times;</button>';
 print '</div>';
 print '<div class="seup-modal-body">';
-print '<form method="post" action="'.$_SERVER['PHP_SELF'].'" class="seup-form">';
-print '<div class="seup-form-grid"><div class="seup-form-group"><label class="seup-label">Korisnik</label><input type="text" name="ime_user" id="ime_user" class="seup-input" list="user-list" placeholder="Unesite ili odaberite korisnika" required autocomplete="off"><datalist id="user-list">';
+
+// Edit fetch
+$IO = null; $edit_oznaka = (int) GETPOST('edit_oznaka','int');
+if ($edit_oznaka>0) { $res=$db->query("SELECT * FROM " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika WHERE ID_interna_oznaka_korisnika=".$edit_oznaka." LIMIT 1"); if ($res) $IO=$db->fetch_object($res); }
+
+print '<form method="post" action="'.$_SERVER['PHP_SELF'].'" class="seup-form" id="interneOznakeForm">';
+if ($IO) print '<input type="hidden" name="rowid_oznaka" value="'.(int)$IO->ID_interna_oznaka_korisnika.'">';
+print '<div class="seup-form-grid"><div class="seup-form-group"><label class="seup-label">Korisnik</label><input type="text" name="ime_user" id="ime_user" class="seup-input" list="user-list" placeholder="Unesite ili odaberite korisnika" required autocomplete="off" value="'.$V($IO?$IO->ime_prezime:'').'"><datalist id="user-list">';
 foreach ($listUsers as $u) { print '<option value="'.htmlspecialchars($u->getFullName($langs)).'"></option>'; }
-print '</datalist></div><div class="seup-form-group"><label class="seup-label">Redni broj (0-99)</label><input type="number" name="redni_broj" id="redni_broj" class="seup-input" min="0" max="99" required></div></div>';
-print '<div class="seup-form-group"><label class="seup-label">Radno mjesto</label><input type="text" name="radno_mjesto_korisnika" id="radno_mjesto_korisnika" class="seup-input" required></div>';
-print '<div class="seup-form-actions"><button type="submit" name="action_oznaka" value="add" class="seup-btn seup-btn-primary"><i class="fas fa-plus"></i> Dodaj</button><button type="submit" name="action_oznaka" value="update" class="seup-btn seup-btn-secondary"><i class="fas fa-edit"></i> Ažuriraj</button><button type="submit" name="action_oznaka" value="delete" class="seup-btn seup-btn-danger"><i class="fas fa-trash"></i> Obriši</button></div>';
+print '</datalist></div><div class="seup-form-group"><label class="seup-label">Redni broj (0-99)</label><input type="number" name="redni_broj" id="redni_broj" class="seup-input" min="0" max="99" required value="'.$V($IO?$IO->rbr:'').'"></div></div>';
+print '<div class="seup-form-group"><label class="seup-label">Radno mjesto</label><input type="text" name="radno_mjesto_korisnika" id="radno_mjesto_korisnika" class="seup-input" required value="'.$V($IO?$IO->naziv:'').'"></div>';
+print '<div class="seup-form-actions">';
+print '<button type="submit" name="action_oznaka" value="'.($IO?'update':'add').'" class="seup-btn seup-btn-'.($IO?'secondary':'primary').'"><i class="fas fa-'.($IO?'edit':'plus').'"></i> '.($IO?'Ažuriraj':'Dodaj').'</button>';
+print ' <button type="reset" class="seup-btn seup-btn-secondary" id="btnPonistiOznaka">Poništi</button>';
+if ($IO) print ' <a class="seup-btn" href="'.$_SERVER['PHP_SELF'].'?tab=interne_oznake">Odustani</a>';
+print '</div>';
 print '</form>';
+
+// Lista postojećih internih oznaka
+print '<hr style="margin: 30px 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">';
+print '<h6 style="color: #fff; margin-bottom: 15px; font-weight: 600;">Postojeće Interne Oznake</h6>';
+print '<div class="seup-table-container"><table class="seup-table">';
+print '<thead><tr><th>Korisnik</th><th>Redni broj</th><th>Radno mjesto</th><th style="width:120px">Akcije</th></tr></thead><tbody>';
+$resql = $db->query("SELECT * FROM " . MAIN_DB_PREFIX . "a_interna_oznaka_korisnika ORDER BY rbr ASC");
+if ($resql && $db->num_rows($resql) > 0) {
+  while ($obj = $db->fetch_object($resql)) {
+    print '<tr>';
+    print '<td>'.htmlspecialchars($obj->ime_prezime).'</td>';
+    print '<td>'.htmlspecialchars($obj->rbr).'</td>';
+    print '<td>'.htmlspecialchars($obj->naziv).'</td>';
+    print '<td><a href="'.$_SERVER['PHP_SELF'].'?edit_oznaka='.(int)$obj->ID_interna_oznaka_korisnika.'" class="seup-btn-icon seup-btn-icon-edit" title="Uredi"><i class="fas fa-edit"></i></a> ';
+    print '<button type="button" class="seup-btn-icon seup-btn-icon-delete" onclick="deleteInternaOznaka('.(int)$obj->ID_interna_oznaka_korisnika.')" title="Obriši"><i class="fas fa-trash"></i></button></td>';
+    print '</tr>';
+  }
+} else {
+  print '<tr><td colspan="4" style="text-align:center; color: rgba(255,255,255,0.6);">Nema unesenih internih oznaka</td></tr>';
+}
+print '</tbody></table></div>';
+
 print '</div>';
 print '<div class="seup-modal-footer">';
 print '<button type="button" class="seup-btn seup-btn-secondary seup-modal-close">Zatvori</button>';
@@ -828,7 +926,55 @@ document.addEventListener('DOMContentLoaded', function() {
     el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-triangle'}"></i> ${message}`;
     setTimeout(()=>{ el.classList.remove('show'); }, duration);
   };
+
+  // Auto-open modal za edit interne oznake
+  <?php if ($edit_oznaka > 0): ?>
+  const interneOznakeModal = document.getElementById('interneOznakeModal');
+  if (interneOznakeModal) {
+    interneOznakeModal.classList.add('show');
+  }
+  <?php endif; ?>
+
+  // Reset forma za interne oznake
+  const btnPonistiOznaka = document.getElementById('btnPonistiOznaka');
+  if (btnPonistiOznaka) {
+    btnPonistiOznaka.addEventListener('click', function() {
+      const form = document.getElementById('interneOznakeForm');
+      if (form) {
+        form.reset();
+        document.getElementById('ime_user').value = '';
+        document.getElementById('redni_broj').value = '';
+        document.getElementById('radno_mjesto_korisnika').value = '';
+      }
+    });
+  }
 });
+
+// Delete funkcija za interne oznake
+function deleteInternaOznaka(id) {
+  if (!confirm('Jeste li sigurni da želite obrisati ovu internu oznaku korisnika?')) {
+    return;
+  }
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '<?php echo $_SERVER['PHP_SELF']; ?>';
+
+  const actionInput = document.createElement('input');
+  actionInput.type = 'hidden';
+  actionInput.name = 'action_oznaka';
+  actionInput.value = 'delete';
+
+  const idInput = document.createElement('input');
+  idInput.type = 'hidden';
+  idInput.name = 'id_oznaka_delete';
+  idInput.value = id;
+
+  form.appendChild(actionInput);
+  form.appendChild(idInput);
+  document.body.appendChild(form);
+  form.submit();
+}
 </script>
 
 <style>
@@ -840,6 +986,20 @@ document.addEventListener('DOMContentLoaded', function() {
 .seup-btn.seup-loading{position:relative;color:transparent}
 .seup-btn.seup-loading::after{content:'';position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid transparent;border-top:2px solid currentColor;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+.seup-table-container{overflow-x:auto;margin-top:15px;border-radius:10px;background:rgba(255,255,255,0.02)}
+.seup-table{width:100%;border-collapse:collapse;font-size:14px}
+.seup-table thead{background:rgba(255,255,255,0.05)}
+.seup-table th{padding:12px 15px;text-align:left;color:#fff;font-weight:600;border-bottom:2px solid rgba(255,255,255,0.1)}
+.seup-table td{padding:12px 15px;color:rgba(255,255,255,0.85);border-bottom:1px solid rgba(255,255,255,0.05)}
+.seup-table tbody tr:hover{background:rgba(255,255,255,0.03)}
+.seup-table tbody tr:last-child td{border-bottom:none}
+
+.seup-btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:none;cursor:pointer;transition:all 0.2s;font-size:14px;background:transparent}
+.seup-btn-icon-edit{color:#3b82f6;background:rgba(59,130,246,0.1)}
+.seup-btn-icon-edit:hover{background:rgba(59,130,246,0.2);transform:scale(1.05)}
+.seup-btn-icon-delete{color:#ef4444;background:rgba(239,68,68,0.1)}
+.seup-btn-icon-delete:hover{background:rgba(239,68,68,0.2);transform:scale(1.05)}
 </style>
 
 <?php llxFooter(); $db->close(); ?>
