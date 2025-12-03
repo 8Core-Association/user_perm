@@ -360,7 +360,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1105,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'add'
 );
@@ -392,7 +392,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1102,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'send'
 );
@@ -408,7 +408,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1103,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'inbox'
 );
@@ -424,7 +424,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1104,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'folder-open'
 );
@@ -440,7 +440,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1106,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'label'
 );
@@ -456,7 +456,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1108,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'tag'
 );
@@ -472,7 +472,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1107,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'user'
 );
@@ -488,7 +488,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1108,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'archive'
 );
@@ -504,7 +504,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1110,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'setup'
 );
@@ -552,7 +552,7 @@ $this->menu[$r++] = array(
     'langs'    => 'seup@seup',
     'position' => 1113,
     'enabled'  => '1',
-    'perms'    => '1',
+    'perms'    => '$user->admin',
     'user'     => 2,
     'picto'    => 'info'
 );
